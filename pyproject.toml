@@ -12,6 +12,7 @@ uvicorn = "^0.34.2"
 pydantic = "^2.11.4"
 rich = "^14.0.0"
 typer = "^0.15.3"
+dotenv = "^0.9.9"
 
 
 [tool.poetry.group.dev.dependencies]

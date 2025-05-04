@@ -26,14 +26,20 @@ def format_order_info(order: Dict[str, Any]) -> str:
     Format order information for display to the user
     """
     products_ordered = ", ".join(order['ProductsOrdered'])
-    tracking_info = f"Tracking Number: {order['TrackingNumber']}" if order.get('TrackingNumber') else "No tracking number available"
+    
+    # Create tracking info with link when available
+    if order.get('TrackingNumber'):
+        tracking_url = f"https://tools.usps.com/go/TrackConfirmAction?tLabels={order['TrackingNumber']}"
+        tracking_info = f"Tracking Number: {order['TrackingNumber']}\nTracking Link: {tracking_url}"
+    else:
+        tracking_info = "No tracking number available"
     
     return f"""
     Order: {order['OrderNumber']}
     Customer: {order['CustomerName']} ({order['Email']})
     Status: {order['Status'].upper()}
     Products Ordered: {products_ordered}
-    {tracking_info}
+    Tracking Info: {tracking_info}
     """
 
 def order_status_to_readable(status: str) -> str:

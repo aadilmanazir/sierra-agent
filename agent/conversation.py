@@ -10,6 +10,7 @@ from enum import Enum, auto
 from agent.utils import extract_tracking_number, extract_order_number, extract_sku, extract_tags
 from agent.services.products import get_all_products
 from agent.services.orders import search_orders, get_order_details, track_order, format_order_info, order_status_to_readable, orders_to_context
+from agent.utils.agent_utils import check_early_riser_promotion, handle_early_risers_promotion
 
 # Load environment variables
 dotenv.load_dotenv()
@@ -36,8 +37,6 @@ class SierraAgent:
 
     def __init__(self):
         self.conversation_history = []
-        self.product_context = {}
-        self.order_context = {}
         self.state = AgentState.WELCOME
         self.current_intent = Intent.NONE
         self.collected_info = {}
@@ -94,8 +93,10 @@ class SierraAgent:
             return await self._handle_product_info_gathering()
             
         elif self.current_intent == Intent.PROMOTIONS:
-            promotions_msg = "We currently have several promotions running. Would you like to hear about seasonal discounts, member-only offers, or bundle deals?"
-            return await self._send_response(promotions_msg, AgentState.INTENT_DETECTION)
+            # If the intent is promotions, the LLM has already determined it's an Early Risers request
+            # Just use the helper function to get the appropriate response
+            promo_response = handle_early_risers_promotion()
+            return await self._send_response(promo_response, AgentState.INTENT_DETECTION)
         
         # Fallback for unhandled intents
         self.state = AgentState.INTENT_DETECTION
@@ -152,7 +153,7 @@ class SierraAgent:
                         if order.get("TrackingNumber"):
                             tracking_info = f" Your package is being tracked with number {order['TrackingNumber']}."
                             
-                        response = f"Here's the information for your order {order_number}.{tracking_info} {status_text}.\n\n{context}\n\nCan I help you with anything else?"
+                        response = f"Here's the information for your order {order_number}.{tracking_info} {status_text}.\n\n{context}\n\nEnjoy your outdoor apparrel! 🌄\n\nCan I help you with anything else?"
                         return await self._send_response(response, AgentState.INTENT_DETECTION)
                     except Exception as e:
                         error_msg = f"Sorry, I couldn't find an order with number {order_number} for email {email}. Please double check and try again."
@@ -160,22 +161,11 @@ class SierraAgent:
                         self.collected_info = {}
                         return await self._send_response(error_msg, AgentState.INFO_GATHERING)
                 else:
-                    missing_info_msg = "I'm missing some necessary information to check your order. Let's start over. Please provide your order number and email address."
+                    missing_info_msg = "I'm missing some necessary information to check your order. Please provide your order number and email address."
                     return await self._send_response(missing_info_msg, AgentState.INFO_GATHERING)
             
-            elif self.current_intent == Intent.PRODUCT_RECOMMENDATIONS:
-                # Product recommendations are now handled by _handle_product_info_gathering
-                # Just in case we ended up here, redirect to the proper function
-                return await self._handle_product_info_gathering()
-            
-            # Handle promotions or other intents
-            elif self.current_intent == Intent.PROMOTIONS:
-                promo_msg = "We have several promotions running this month! Enjoy 20% off all hiking gear, free shipping on orders over $75, and buy-one-get-one 50% off on select clothing items. Would you like more information on any of these promotions?"
-                return await self._send_response(promo_msg, AgentState.INTENT_DETECTION)
-        
-            # Default case
-            fallback_msg = "I'm sorry, I wasn't able to retrieve the information you requested. Let's try something else. What would you like to know about?"
-            return await self._send_response(fallback_msg, AgentState.INTENT_DETECTION)
+            else:
+                raise RuntimeError(f"Invalid state: {self.current_intent} intent should not reach DATA_RETRIEVAL state")
             
         except Exception as e:
             # General error handling

@@ -4,6 +4,7 @@ import json
 import openai
 from typing import List, Dict, Any
 import os
+
 openai.api_key = os.getenv("OPEN_AI_API_KEY")
 
 class SierraAgent:
@@ -127,6 +128,7 @@ class SierraAgent:
         - Be friendly, concise, and thorough when describing matching products
         - Include relevant details from the product catalog (names, SKUs, features)
         - Always ask if they need further assistance
+        - Make a reference to the outdoors at the end of your response, but before asking if they need further assistance. Ideally, it should relevant to the product. Make it enthusiastic and fun.
         
         Product catalog is provided in JSON format with the following fields:
         - ProductName: The name of the product
@@ -160,4 +162,4 @@ class SierraAgent:
         except Exception as e:
             print(f"Error generating product matching response: {e}")
             # Return an error message instead of empty string
-            return "I found some products that might interest you, but I'm having trouble retrieving the details right now. Could you tell me more about what you're looking for?"
+            return "I found some products that might interest you, but I'm having trouble retrieving the details right now. Can you please try again?"
