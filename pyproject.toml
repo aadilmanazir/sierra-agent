@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "sierra-agent"
+version = "0.1.0"
+description = ""
+authors = ["Aadil Manazir <aadilmanazir@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+fastapi = "^0.115.12"
+uvicorn = "^0.34.2"
+pydantic = "^2.11.4"
+rich = "^14.0.0"
+typer = "^0.15.3"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+httpx = "^0.28.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
