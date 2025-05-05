@@ -8,7 +8,7 @@ from enum import Enum, auto
 
 from agent.services.products import get_all_products
 from agent.services.orders import search_orders, get_order_details, track_order, format_order_info, order_status_to_readable, orders_to_context
-from agent.utils.agent_utils import handle_early_risers_promotion, AgentUtilsMixin
+from agent.utils.agent_utils import handle_early_risers_promotion, handle_other_promotion_requests, AgentUtilsMixin
 from agent.utils.product_utils import ProductUtilsMixin
 from agent.utils.order_utils import OrderUtilsMixin
 
@@ -20,6 +20,7 @@ class Intent(Enum):
     ORDER_STATUS = auto()  # User wants to check order status + tracking link
     PRODUCT_RECOMMENDATIONS = auto()  # User wants product recommendations
     PROMOTIONS = auto()  # User wants to know about promotions
+    OTHER_DISCOUNTS = auto()  # User wants to know about other discounts/promotions
 
 class SierraAgent(AgentUtilsMixin, ProductUtilsMixin, OrderUtilsMixin):
     welcome_msg = "Welcome, I am Sierra Outfitters agent. You can ask about the status of an order, product recommendations, or potential promotions. What would you like to request?"
@@ -65,8 +66,10 @@ class SierraAgent(AgentUtilsMixin, ProductUtilsMixin, OrderUtilsMixin):
         intent_mapping = {
             "order_status": Intent.ORDER_STATUS,
             "product_recommendations": Intent.PRODUCT_RECOMMENDATIONS,
-            "promotions": Intent.PROMOTIONS
+            "promotions": Intent.PROMOTIONS,
+            "other_discounts": Intent.OTHER_DISCOUNTS
         }
+
         self.current_intent = intent_mapping.get(intent_result, Intent.NONE)
         
         # Reset collected info for new intent
@@ -85,6 +88,11 @@ class SierraAgent(AgentUtilsMixin, ProductUtilsMixin, OrderUtilsMixin):
             # If the intent is promotions, the LLM has already determined it's an Early Risers request
             # Just use the helper function to get the appropriate response
             promo_response = handle_early_risers_promotion()
+            return await self._send_response(promo_response, AgentState.INTENT_DETECTION)
+        
+        elif self.current_intent == Intent.OTHER_DISCOUNTS:
+            # If the intent is other discounts, the LLM has already determined it's an other discounts request
+            promo_response = handle_other_promotion_requests()
             return await self._send_response(promo_response, AgentState.INTENT_DETECTION)
         
         # Fallback for unhandled intents
@@ -119,7 +127,7 @@ class SierraAgent(AgentUtilsMixin, ProductUtilsMixin, OrderUtilsMixin):
             # Use the consolidated product info gathering helper
             return await self._handle_product_info_gathering()
             
-        # Default case (should rarely happen)
+        # Default case (should not happen)
         fallback_msg = "I'm not sure what information I need. Let's start over. What would you like help with?"
         self.conversation_history.append({"role": "assistant", "content": fallback_msg})
         self.state = AgentState.INTENT_DETECTION

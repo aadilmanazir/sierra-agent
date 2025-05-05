@@ -62,7 +62,7 @@ poetry run python main.py chat
 You can ask about:
 - Products (e.g., "What backpacks do you sell?")
 - Order status (e.g., "What's the status of order #W001?")
-- Order tracking (e.g., "Track order TRK123456789")
+- Promotions (e.g., "Can I have a discount code for being awesome?")
 
 Type `exit`, `quit`, or `bye` to end the conversation.
 
@@ -83,29 +83,27 @@ sierra-agent/
 ├── api/                     # FastAPI application
 │   ├── main.py              # API entry point
 │   ├── routes/              # API endpoints
+│   │   ├── products.py      # Product endpoints
+│   │   └── orders.py        # Order endpoints 
 │   └── models/              # Pydantic models
+│       ├── products.py      # Product models
+│       └── order.py         # Order models
 ├── agent/                   # Conversation agent
-│   ├── conversation.py      # Core agent logic
-│   ├── intents/             # Intent handlers
-│   └── utils.py             # Utility functions
+│   ├── conversation.py      # Core agent logic with SierraAgent class
+│   ├── types.py             # Agent state definitions
+│   ├── services/            # Service integrations
+│   │   ├── products.py      # Product API services
+│   │   └── orders.py        # Order API services
+│   └── utils/               # Utility mixins and functions
+│       ├── agent_utils.py   # General agent utilities and intent detection
+│       ├── product_utils.py # Product-specific functionality
+│       └── order_utils.py   # Order-specific functionality
 ├── data/                    # Data files
 │   ├── ProductCatalog.json  # Product catalog data
 │   └── CustomerOrders.json  # Customer order data
-├── evals/                   # Evaluation framework
-│   ├── metrics.py           # Evaluation metrics
-│   └── test_cases.py        # Test cases
+├── evals/                   # Evaluation utilities
+│   └── test_cases.py        # Test case definitions
 ├── main.py                  # CLI entry point
 ├── pyproject.toml           # Poetry configuration
 └── README.md                # Project documentation
 ```
-
-## Development
-
-To add new features or fix bugs:
-
-1. Add new data to `data/` if needed
-2. Add models to `api/models/` 
-3. Add routes to `api/routes/`
-4. Add intent handlers to `agent/intents/`
-5. Update the agent logic in `agent/conversation.py`
-6. Add test cases to `evals/test_cases.py`

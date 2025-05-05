@@ -39,14 +39,14 @@ class ProductUtilsMixin:
             has_clear_question = await self._check_for_product_question()
             
             if not has_clear_question:
-                prompt_msg = "I can help you find products. What specific items or categories are you interested in?"
+                prompt_msg = "Please provide me more details about what you're looking for. I can help you find products!"
                 return await self._send_response(prompt_msg, AgentState.INFO_GATHERING)
             
             # Step 2: Use LLM to match products and answer the question
             response = await self._generate_product_matching_response(product_data)
-            
+
             # Step 3: If the response is empty, no products matched
-            if not response:
+            if len(response) == 0:
                 no_match_msg = "I couldn't find any products matching your criteria. Could you please provide more details about what you're looking for? For example, what type of activity, features, or categories are important to you?"
                 return await self._send_response(no_match_msg, AgentState.INFO_GATHERING)
             
@@ -66,7 +66,7 @@ class ProductUtilsMixin:
         system_message = """
         You are a specialized query intent classifier within Sierra Outfitters' AI customer service orchestration system.
     
-        YOUR ROLE: Determine if the customer's conversation contains enough product-specific information to perform a meaningful product catalog search.
+        YOUR ROLE: Determine if the customer's conversation contains enough product-specific information to perform a product catalog search.
         
         IMPORTANT CONTEXT:
         - You are analyzing an ongoing conversation, not isolated queries
@@ -81,14 +81,16 @@ class ProductUtilsMixin:
         - Direct product mentions: "Do you have hiking boots?"
         - Product categories: "I'm looking for camping gear"
         - Product attributes: "I need waterproof jackets"
+        - Products for types of people: "Do you have products for wizards?"
+        - Just product types: "protein bars"
         - Follow-up specifics: "How many are in stock?" (when previously discussing a specific product)
         - Implied references: "What other colors does it come in?" (referencing a previously mentioned product)
         
         ANSWER GUIDELINES:
-        - Answer "yes" ONLY if the conversation contains enough information to perform a meaningful catalog search
-        - Answer "no" if the customer hasn't specified any product information that could be used for searching
-        - Consider the ENTIRE conversation context, not just the latest message
-        - If the customer is asking follow-up questions about previously mentioned products, answer "yes"
+        - Answer "yes" if the conversation contains information to perform a catalog search, so if the customer has mentioned a product, a category, an attribute, or a follow-up question about a previously mentioned product.
+        - Answer "no" if the customer hasn't specified any product information that could be used for searching the catalog for the current request / context
+        - Consider the ENTIRE conversation context, not just the latest message. But, of course, the product searching context should be relevant to the intent of the customer's current request. 
+        - If the customer is asking follow-up questions about previously mentioned products, answer "yes". But, of course, the product searching context should be relevant to the intent of the customer's current request, otherwise answer "no". 
         
         Respond ONLY with "yes" or "no".
         """      
@@ -151,11 +153,11 @@ class ProductUtilsMixin:
         3. Generate a helpful, personalized response about relevant products
         
         RESPONSE GUIDELINES:
-        - If NO products in the catalog match the customer's needs, return ONLY an empty string ""
+        - IMPORTANT: If NO products in the catalog match the customer's needs, return ONLY an empty string "". Make sure to return an empty string, not a message saying that no products were found. Do not include spaces or newlines.
         - Never mention products that aren't in the provided catalog
         - Be conversational and natural - you're continuing an ongoing dialogue
         - Reference relevant details from the catalog (product names, SKUs, features, inventory)
-        - Include a brief, enthusiastic outdoor-themed comment relevant to the products (e.g., "These hiking boots are perfect for conquering mountain trails!")
+        - Include a brief, enthusiastic outdoor-themed comment relevant to the products (e.g., "These hiking boots are perfect for conquering mountain trails!"). Add a relevant outdoor-themed emoji as well.
         - Always end by asking if they need further assistance
         - Maintain continuity with the previous conversation - acknowledge information they've already shared
         
@@ -178,8 +180,8 @@ class ProductUtilsMixin:
             
             result = response.output_text.strip()
             
-            # If the result is empty or just whitespace, return empty string
-            if not result or result.isspace():
+            # If the result is empty, return an empty string
+            if len(result) <= 2:
                 return ""
                 
             return result

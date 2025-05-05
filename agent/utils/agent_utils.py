@@ -34,6 +34,16 @@ def handle_early_risers_promotion() -> str:
         time_str = current_time.strftime('%I:%M %p')
         return f"The Early Risers Promotion is only available between 8:00 AM and 10:00 AM Pacific Time ☀️. Current time is {time_str}. Please check back during promotion hours. Can I help you with anything else?"
 
+def handle_other_promotion_requests() -> str:
+    """
+    Handle requests for discounts or promotions other than Early Risers.
+    Returns a standard response informing the customer that the requested promotion doesn't exist.
+    
+    Returns:
+        A formatted response message
+    """
+    return "I'm sorry, but the promotion or discount you're asking about isn't currently available. Is there something else I can help you with?"
+
 class AgentUtilsMixin:
     def _get_last_user_message(self) -> str:
         """Get the last user message from conversation history."""
@@ -46,27 +56,45 @@ class AgentUtilsMixin:
         """Detect the intent of the user message using LLM"""
 
         system_message = f"""
-            You are an intent classifier for a customer service AI agent at Sierra Outfitters. Your classification will be used for orchestrating the conversation flow in an LLM-powered customer service system.
-
-            IMPORTANT: This is an ongoing conversation. User messages are not isolated requests but part of a continuous dialogue. Maintain conversational coherence by preserving the current intent unless there's an explicit change.
-
-            Classify the user's intent into ONE of the following categories:
-            - order_status: Questions or discussions about a customer's order status or delivery
-            - product_recommendations: Requests or discussions about product suggestions or information
-            - promotions: ONLY for explicit requests about the "Early Risers Promotion"
-            - none: Only if the query doesn't fit any above categories
-
-            CONTEXT PRESERVATION GUIDELINES:
-            - The current conversation intent is: {self.current_intent}
-            - Assume this intent remains VALID unless the customer clearly indicates a change in topic
-            - Follow-up questions, clarifications, or additional details about the same topic should maintain the current intent
-            - Only change the intent when the customer explicitly shifts to a new topic
-            
-            For promotions classification:
-            - Use "promotions" ONLY when the customer explicitly mentions "Early Risers" or "Early Riser" promotion
-            - General questions about sales or discounts should NOT be classified as "promotions"
-
-            Return ONLY the intent name without explanations or additional text.
+        You are the CORE INTENT CLASSIFIER within Sierra Outfitters' customer service AI orchestration system.
+        
+        YOUR ROLE: Accurately determine the customer's current intent to route the conversation to the appropriate specialized handling module.
+        
+        IMPORTANT CONTEXT:
+        - You are the primary orchestrator for conversation flow decisions
+        - Your classification directly determines which specialized AI component handles the customer's request
+        - The entire customer experience depends on consistent and accurate intent classification
+        - This is an ongoing conversation with context and history, not isolated messages
+        
+        CLASSIFICATION TASK:
+        Classify the user's intent into ONE of the following categories:
+        - order_status: Questions or discussions about a customer's order status or delivery
+        - product_recommendations: Requests or discussions about product suggestions or information
+        - promotions: ONLY for explicit requests about the "Early Risers Promotion"
+        - other_discounts: Requests for ANY other mention of discount, coupon, sale, or promotion EXCEPT Early Risers. 
+        - none: Only if the query doesn't fit any above categories
+        
+        CONVERSATION CONTEXT AWARENESS:
+        - The current conversation intent is: {self.current_intent}
+        - Maintain conversational coherence by preserving this intent unless there's a clear change
+        - User messages are part of a continuous dialogue, not isolated requests
+        - Follow-up questions, clarifications, or additional details about the same topic should maintain the current intent
+        - Only change the intent when the customer explicitly shifts to a new topic
+        
+        SPECIFIC CLASSIFICATION GUIDELINES:
+        - For "order_status": Include any questions about orders, shipping, tracking, or delivery status
+        - For "product_recommendations": Include product searches, inquiries about features, availability, or comparisons
+        - For "promotions": ONLY use when customer explicitly mentions "Early Risers" or "Early Riser" promotion
+        - For "other_discounts": Use for ANY request about discounts, coupons, sales, or promotions EXCEPT Early Risers
+        - For "none": Use only when the customer's intent truly doesn't match any of the defined categories
+        
+        CRITICAL REMINDER:
+        - "promotions" is ONLY for the specific "Early Risers Promotion", nothing else
+        - "other_discounts" covers all other discount/promotion requests
+        - Your classification determines the entire conversation path, so be precise and consistent
+        - When in doubt about a new topic, consider whether it relates to the current intent
+        
+        Return ONLY the intent name without explanations or additional text.
         """
         
         recent_conversation = self._get_recent_conversation()
@@ -83,7 +111,7 @@ class AgentUtilsMixin:
             
             # Validate that the intent is one of our expected values
             valid_intents = ["order_status", "product_recommendations", 
-                             "promotions", "none"]
+                             "promotions", "other_discounts", "none"]
             
             if intent not in valid_intents:
                 intent = "none"

@@ -11,7 +11,6 @@ from rich import print as rprint
 
 from api.main import app as api_app
 from agent import SierraAgent
-from evals import run_evaluation
 
 # Load environment variables
 dotenv.load_dotenv()
@@ -64,23 +63,15 @@ def chat():
     asyncio.run(chat_loop())
 
 @app.command()
-def evaluate():
-    """
-    Run evaluation on the agent
-    """
-    rprint("[bold green]Running Sierra Agent evaluation...[/bold green]")
-    asyncio.run(run_evaluation())
-
-@app.command()
 def env_check():
     """
     Check if the environment is properly set up
     """
     # Check OpenAI API key
-    openai_key = os.getenv("OPEN_AI_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
     if not openai_key:
-        rprint("[bold red]ERROR: OPEN_AI_API_KEY not found in .env file[/bold red]")
-        rprint("Please add your OpenAI API key to a .env file as OPEN_AI_API_KEY=your_key_here")
+        rprint("[bold red]ERROR: OPENAI_API_KEY not found in .env file[/bold red]")
+        rprint("Please add your OpenAI API key to a .env file as OPENAI_API_KEY=your_key_here")
         return False
     
     # Check data files

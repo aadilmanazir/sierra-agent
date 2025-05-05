@@ -14,6 +14,13 @@
         "Tags": ["Skis", "Snow", "Winter", "Adventure"]
     },
     {
+        "ProductName": "Aadil's Amazing Ski Suit",
+        "SKU": "SOTB004",
+        "Inventory": 100,
+        "Description": "Aadil's Amazing Ski Suit is the perfect choice for those who want to look stylish while skiing. It's made from high-quality materials and is designed to keep you warm and comfortable in cold weather.",
+        "Tags": ["Skiing", "Winter", "Adventure", "Fashion"]
+    },
+    {
         "ProductName": "Nat's Infinity Pro Hairbrush",
         "SKU": "SOBT003",
         "Inventory": 200,
