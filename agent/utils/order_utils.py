@@ -1,83 +1,79 @@
 from agent.services.orders import search_orders, get_order_details, track_order, format_order_info, order_status_to_readable, orders_to_context
-from agent.conversation import AgentState
+from agent.types import AgentState
 import json
-import openai
+from openai import AsyncOpenAI
 import os
 from typing import List, Dict, Any, Optional
+import dotenv
 
-openai.api_key = os.getenv("OPEN_AI_API_KEY")
+dotenv.load_dotenv()
 
-class SierraAgent:
+openai = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+class OrderUtilsMixin:
     async def _extract_order_details_with_llm(self) -> Dict[str, Optional[str]]:
         """
         Extract order number and email from conversation history using LLM.
         Looks at multiple messages in conversation history to find this information.
+            
+        Returns:
+            Dict with keys 'order_number' and 'email', values can be None if not found
+        """
+        # Get recent conversation
+        recent_conversation = self._get_recent_conversation()
         
-    Returns:
-        Dict with keys 'order_number' and 'email', values can be None if not found
-    """
-    # Get recent conversation
-    recent_messages = self._get_recent_conversation()
-    
-    # Format conversation
-    conversation_text = self._format_conversation_text(recent_messages)
-    
-    system_message = """
-    Your task is to extract order details from a conversation between a customer and a customer service agent.
-    
-    Look for:
-    1. Order number (format: #W followed by digits, e.g., #W001, #W123)
-    2. Customer email address
-    
-    Important: The information might not be present in the conversation. 
-    If you can't find an order number or email, it's okay to return null.
-    
-    Return your findings in this JSON format:
-    {
-        "order_number": "the order number or null if not found",
-        "email": "the email address or null if not found"
-    }
-    
-    Only return the JSON object, nothing else.
-    """
-    
-    messages = [
-        {"role": "system", "content": system_message},
-        {"role": "user", "content": f"Extract order details from this conversation:\n\n{conversation_text}"}
-    ]
-    
-    try:
-        response = await openai.ChatCompletion.acreate(
-            model="gpt-4o",
-            messages=messages,
-            max_tokens=256,
-            temperature=0.3
-        )
+        system_message = """
+        Your task is to extract order details from a conversation between a customer and a customer service agent.
         
-        result_text = response.choices[0].message.content.strip()
+        Look for:
+        1. Order number (format: #W followed by digits, e.g., #W001, #W123)
+        2. Customer email address
         
-        # Try to parse the JSON response
+        Important: The information might not be present in the conversation. 
+        If you can't find an order number or email, it's okay to return null.
+        
+        Return your findings in this JSON format:
+        {
+            "order_number": "the order number or null if not found",
+            "email": "the email address or null if not found"
+        }
+        
+        Only return the JSON object, nothing else.
+        """
+        
         try:
-            result = json.loads(result_text)
-            # Normalize the results
-            order_details = {
-                "order_number": result.get("order_number") if result.get("order_number") and result.get("order_number") != "null" else None,
-                "email": result.get("email") if result.get("email") and result.get("email") != "null" else None
-            }
-            return order_details
-        except json.JSONDecodeError: # TODO: Fallback to regex extraction
-            print(f"Error parsing JSON response: {result_text}")
+            response = await openai.responses.create(
+                model="gpt-4o",
+                instructions=system_message,
+                input=recent_conversation,
+                max_output_tokens=256,
+                temperature=0.3
+            )
+            
+            result_text = response.output_text.strip()
+            
+            # Try to parse the JSON response
+            try:
+                result = json.loads(result_text)
+                # Normalize the results
+                order_details = {
+                    "order_number": result.get("order_number") if result.get("order_number") and result.get("order_number") != "null" else None,
+                    "email": result.get("email") if result.get("email") and result.get("email") != "null" else None
+                }
+                return order_details
+            except json.JSONDecodeError: # TODO: Fallback to regex extraction
+                print(f"Error parsing JSON response: {result_text}")
+                return {
+                    "order_number": None,
+                    "email": None
+                }
+            
+        except Exception as e:
+            print(f"Error extracting order details: {e}")
             return {
                 "order_number": None,
                 "email": None
             }
-            
-    except Exception as e:
-        print(f"Error extracting order details: {e}")
-        return {
-            "order_number": None,
-            "email": None
-        }
 
     async def _handle_order_info_gathering(self) -> str:
         """

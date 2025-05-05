@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 import os
 
-from api.models.products import Product, ProductResponse, ProductSearchParams
+from api.models.products import Product, ProductResponse
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -44,15 +44,3 @@ def get_products(
         products = [p for p in products if p["Inventory"] >= min_inventory]
         
     return {"products": products}
-
-@router.get("/{sku}", response_model=Product)
-def get_product(sku: str):
-    """
-    Get a single product by SKU
-    """
-    products = load_products()
-    for product in products:
-        if product["SKU"] == sku:
-            return product
-    
-    raise HTTPException(status_code=404, detail=f"Product with SKU {sku} not found")

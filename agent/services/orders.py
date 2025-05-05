@@ -17,7 +17,7 @@ async def search_orders(customer_email: str = None, order_number: str = None) ->
         params["order_number"] = order_number
     
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{API_BASE}/orders", params=params)
+        response = await client.get(f"{API_BASE}/orders/", params=params)
         response.raise_for_status()
         return response.json()["orders"]
 

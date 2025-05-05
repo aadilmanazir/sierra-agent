@@ -1,13 +1,16 @@
 from agent.services.products import get_all_products
-from agent.conversation import AgentState
+from agent.types import AgentState
 import json
-import openai
+from openai import AsyncOpenAI
 from typing import List, Dict, Any
 import os
+import dotenv
 
-openai.api_key = os.getenv("OPEN_AI_API_KEY")
+dotenv.load_dotenv()
 
-class SierraAgent:
+openai = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+class ProductUtilsMixin:
     async def _handle_product_info_gathering(self) -> str:
             """
             Simplified product information handling process.
@@ -58,36 +61,38 @@ class SierraAgent:
             Boolean indicating if there's a clear product question
         """
         # Get recent conversation history
-        recent_messages = self._get_recent_conversation()
-        
-        # Format conversation history
-        conversation_text = self._format_conversation_text(recent_messages)
+        recent_conversation = self._get_recent_conversation()
         
         system_message = """
+        You are a customer service agent for Sierra Outfitters, an outdoor gear company.
         Your task is to determine if the customer has asked a clear product-related question.
         A clear product question is any query where the customer is asking about products, such as:
         - Questions about specific products
         - Requests for product recommendations
         - Questions about product categories, features, or availability
+        - Questions about a product type
+
+        Basically, the customer needs to give you info to search the catalog for relevant products.
+        You should understand that this is a conversation and the customer may reference previous information in their query.
+
+        For example, they may first ask for protein bars, and then ask for how many are left in stock.
+        Essentially, return no when the customer hasn't given you info to search the catalog, and yes if the customer is / still is asking questions about products.
         
-        Only respond with "yes" if there is a clear product question, or "no" if there isn't.
-        Pay special attention to the most recent customer message. You should only respond with "yes" if the customer wants an answer to a question about products right now- they are not currently asking for anything else.
-        """
-        
-        messages = [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": f"Analyze this conversation and determine if there's a clear product question:\n\n{conversation_text}"}
-        ]
+        Only respond with "yes" if it is clear that the customer has given info for you to search for relevant products in the catalog. Otherwise, answer "no".
+        Pay special attention to the most recent customer messages. You respond with "yes" if the customer wants an answer to a question about products and has given you info to search the catalog.
+        If the customer hasn't given you info to search the catalog, respond with "no".
+        """      
         
         try:
-            response = await openai.ChatCompletion.acreate(
+            response = await openai.responses.create(
                 model="gpt-4o",
-                messages=messages,
-                max_tokens=10,
-                temperature=0.3
+                instructions=system_message,
+                input=recent_conversation,
+                max_output_tokens=16,
+                temperature=0.25
             )
             
-            result = response.choices[0].message.content.strip().lower()
+            result = response.output_text.strip().lower()
             return result == "yes"
                 
         except Exception as e:
@@ -106,14 +111,19 @@ class SierraAgent:
             Response message or empty string if no products match
         """
         # Get recent conversation history
-        recent_messages = self._get_recent_conversation()
-        
-        # Format conversation history
-        conversation_text = self._format_conversation_text(recent_messages)
+        recent_conversation = self._get_recent_conversation()
         
         # Format product data as JSON string
         product_json = json.dumps(product_data, indent=2)
         
+        model_input = f"""
+        Product catalog:
+        {product_json}
+
+        Customer Conversation:
+        {recent_conversation}
+        """
+
         system_message = """
         You are a helpful customer service agent for Sierra Outfitters, an outdoor gear company.
         Your task is to answer customer questions about products based on the product catalog provided.
@@ -136,22 +146,22 @@ class SierraAgent:
         - Inventory: Number of items in stock
         - Description: Detailed description of the product
         - Tags: List of categories/features related to the product
+
+        DO NOT include any products that do not exist in the catalog.
+
+        You should understand that this is a conversation and the customer may reference previous information in their query.
         """
         
-        messages = [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": f"Product catalog:\n{product_json}\n\nCustomer conversation:\n{conversation_text}\n\nGenerate a response based on matching products:"}
-        ]
-        
         try:
-            response = await openai.ChatCompletion.acreate(
+            response = await openai.responses.create(
                 model="gpt-4o",
-                messages=messages,
-                max_tokens=512,
+                instructions=system_message,
+                input=model_input,
+                max_output_tokens=512,
                 temperature=0.7
             )
             
-            result = response.choices[0].message.content.strip()
+            result = response.output_text.strip()
             
             # If the result is empty or just whitespace, return empty string
             if not result or result.isspace():

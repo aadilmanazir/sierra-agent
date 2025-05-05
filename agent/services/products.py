@@ -12,7 +12,7 @@ async def get_all_products() -> List[Dict[str, Any]]:
     """
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{API_BASE}/products")
+            response = await client.get(f"{API_BASE}/products/")
             response.raise_for_status()
             result = response.json()
             

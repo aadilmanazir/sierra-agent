@@ -10,8 +10,3 @@ class Product(BaseModel):
 
 class ProductResponse(BaseModel):
     products: List[Product]
-
-class ProductSearchParams(BaseModel):
-    query: Optional[str] = None
-    tags: Optional[List[str]] = None
-    min_inventory: Optional[int] = None

@@ -1,12 +1,15 @@
-from agent.conversation import AgentState
-import openai
+from agent.types import AgentState
+from openai import AsyncOpenAI
 from typing import List, Dict, Tuple
 import os
 import uuid
 import datetime
-import pytz
+import pytz 
+import dotenv
 
-openai.api_key = os.getenv("OPEN_AI_API_KEY")
+dotenv.load_dotenv()
+
+openai = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def handle_early_risers_promotion() -> str:
     """
@@ -31,7 +34,7 @@ def handle_early_risers_promotion() -> str:
         time_str = current_time.strftime('%I:%M %p')
         return f"The Early Risers Promotion is only available between 8:00 AM and 10:00 AM Pacific Time ☀️. Current time is {time_str}. Please check back during promotion hours. Can I help you with anything else?"
 
-class SierraAgent:
+class AgentUtilsMixin:
     def _get_last_user_message(self) -> str:
         """Get the last user message from conversation history."""
         for message in reversed(self.conversation_history):
@@ -40,46 +43,43 @@ class SierraAgent:
         return ""
 
     async def _detect_intent_llm(self) -> str:
-        """
-        Detect the intent of the user message using LLM
-        """
-        system_message = """
-        Your task is to classify customer service queries into one of the following intents:
-        - order_status: Questions about the status of an order or delivery
-        - product_recommendations: Requests for product recommendations
-        - promotions: ONLY for explicit requests for the "Early Risers Promotion" (must be specifically requesting this exact promotion)
-        - none: If the query doesn't clearly fit any of the above categories
+        """Detect the intent of the user message using LLM"""
 
-        For promotions:
-        - ONLY classify as "promotions" if the user EXPLICITLY asks for the "Early Risers Promotion"
-        - General questions about sales, discounts, or other promotions should be classified as "none"
-        - The user must directly mention "Early Risers" or "Early Riser" promotion
+        system_message = f"""
+            You are an intent classifier for a customer service AI agent at Sierra Outfitters. Your classification will be used for orchestrating the conversation flow in an LLM-powered customer service system.
 
-        You will receive a chat history. Classify the intent of the user's most recent messages. What does the user want to know now?
-        It is important to classify the intent of what the user desires now, as their intent in previous messages may be different.
-        
-        Return only the intent name, with no additional explanation.
+            IMPORTANT: This is an ongoing conversation. User messages are not isolated requests but part of a continuous dialogue. Maintain conversational coherence by preserving the current intent unless there's an explicit change.
+
+            Classify the user's intent into ONE of the following categories:
+            - order_status: Questions or discussions about a customer's order status or delivery
+            - product_recommendations: Requests or discussions about product suggestions or information
+            - promotions: ONLY for explicit requests about the "Early Risers Promotion"
+            - none: Only if the query doesn't fit any above categories
+
+            CONTEXT PRESERVATION GUIDELINES:
+            - The current conversation intent is: {self.current_intent}
+            - Assume this intent remains VALID unless the customer clearly indicates a change in topic
+            - Follow-up questions, clarifications, or additional details about the same topic should maintain the current intent
+            - Only change the intent when the customer explicitly shifts to a new topic
+            
+            For promotions classification:
+            - Use "promotions" ONLY when the customer explicitly mentions "Early Risers" or "Early Riser" promotion
+            - General questions about sales or discounts should NOT be classified as "promotions"
+
+            Return ONLY the intent name without explanations or additional text.
         """
         
-        messages = [
-            {"role": "system", "content": system_message}
-        ]
-        
-        # Add conversation history (up to last 5 exchanges)
-        # Make sure the most recent user message is included
-        if self.conversation_history:
-            # Include up to the last 5 exchanges (10 messages, alternating between user and assistant)
-            history_to_include = self.conversation_history[-10:]
-            messages.extend(history_to_include)
+        recent_conversation = self._get_recent_conversation()
         
         try:
-            response = await openai.ChatCompletion.acreate(
+            response = await openai.responses.create(
                 model="gpt-4o",
-                messages=messages,
-                max_tokens=64,
-                temperature=0.3
+                instructions=system_message,
+                input=recent_conversation,
+                max_output_tokens=16,
+                temperature=0.25
             )
-            intent = response.choices[0].message.content.strip().lower()
+            intent = response.output_text.strip().lower()
             
             # Validate that the intent is one of our expected values
             valid_intents = ["order_status", "product_recommendations", 
@@ -93,17 +93,18 @@ class SierraAgent:
             print(f"Error detecting intent: {e}")
             return "none"
 
-    def _get_recent_conversation(self, num_messages: int = 10) -> List[Dict[str, str]]:
+    def _get_recent_conversation(self, num_messages: int = 10) -> str:
         """
-        Get recent conversation history, limited to the specified number of messages.
+        Get recent conversation history as formatted text, limited to the specified number of messages.
         
         Args:
             num_messages: Maximum number of recent messages to return
             
         Returns:
-            List of conversation messages
+            Formatted conversation text as a string
         """
-        return self.conversation_history[-num_messages:] if len(self.conversation_history) >= num_messages else self.conversation_history
+        recent_messages = self.conversation_history[-num_messages:] if len(self.conversation_history) >= num_messages else self.conversation_history
+        return self._format_conversation_text(recent_messages)
     
     def _format_conversation_text(self, messages: List[Dict[str, str]]) -> str:
         """

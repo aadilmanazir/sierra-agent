@@ -3,27 +3,16 @@ import json
 from typing import List, Dict, Any, Optional, Tuple, Union
 import asyncio
 import re
-import openai
 import dotenv
 from enum import Enum, auto
 
-from agent.utils import extract_tracking_number, extract_order_number, extract_sku, extract_tags
 from agent.services.products import get_all_products
 from agent.services.orders import search_orders, get_order_details, track_order, format_order_info, order_status_to_readable, orders_to_context
-from agent.utils.agent_utils import check_early_riser_promotion, handle_early_risers_promotion
+from agent.utils.agent_utils import handle_early_risers_promotion, AgentUtilsMixin
+from agent.utils.product_utils import ProductUtilsMixin
+from agent.utils.order_utils import OrderUtilsMixin
 
-# Load environment variables
-dotenv.load_dotenv()
-
-# Set up OpenAI API
-openai.api_key = os.getenv("OPEN_AI_API_KEY")
-
-class AgentState(Enum):
-    """Enum to represent the different states of the agent."""
-    WELCOME = auto()  # Initial welcome state
-    INTENT_DETECTION = auto()  # Detecting user intent
-    INFO_GATHERING = auto()  # Gathering info
-    DATA_RETRIEVAL = auto()  # Retrieving data based on gathered info
+from agent.types import AgentState
 
 class Intent(Enum):
     """Enum to represent the different intents a user might have."""
@@ -32,7 +21,7 @@ class Intent(Enum):
     PRODUCT_RECOMMENDATIONS = auto()  # User wants product recommendations
     PROMOTIONS = auto()  # User wants to know about promotions
 
-class SierraAgent:
+class SierraAgent(AgentUtilsMixin, ProductUtilsMixin, OrderUtilsMixin):
     welcome_msg = "Welcome, I am Sierra Outfitters agent. You can ask about the status of an order, product recommendations, or potential promotions. What would you like to request?"
 
     def __init__(self):
