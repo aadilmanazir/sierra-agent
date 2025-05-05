@@ -5,10 +5,15 @@ from openai import AsyncOpenAI
 import os
 from typing import List, Dict, Any, Optional
 import dotenv
+from pydantic import BaseModel
 
 dotenv.load_dotenv()
 
 openai = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+class OrderDetails(BaseModel):
+    order_number: Optional[str] = None
+    email: Optional[str] = None
 
 class OrderUtilsMixin:
     async def _extract_order_details_with_llm(self) -> Dict[str, Optional[str]]:
@@ -23,14 +28,26 @@ class OrderUtilsMixin:
         recent_conversation = self._get_recent_conversation()
         
         system_message = """
-        Your task is to extract order details from a conversation between a customer and a customer service agent.
+        You are a specialized information extraction component within a larger customer service AI orchestration system for Sierra Outfitters.
+    
+        YOUR ROLE: Extract key order identification details from an ongoing customer service conversation to facilitate order lookups.
         
-        Look for:
+        IMPORTANT CONTEXT:
+        - You are analyzing a real conversation between a customer and our service agent
+        - The conversation is ongoing and may contain corrections, changes, or updates to previously provided information
+        - Customers may provide partial information, correct previous information, or refer to information from earlier in the conversation
+        - Always prioritize the most recently provided information when there are contradictions
+        
+        EXTRACTION TASK:
+        Look for the following specific details:
         1. Order number (format: #W followed by digits, e.g., #W001, #W123)
         2. Customer email address
         
-        Important: The information might not be present in the conversation. 
-        If you can't find an order number or email, it's okay to return null.
+        EXTRACTION GUIDELINES:
+        - If multiple order numbers are mentioned, use the most recently mentioned one
+        - If multiple email addresses are mentioned, use the most recently mentioned one
+        - The customer may have corrected a typo or provided updated information - always use their most recent statement
+        - If the information is not present in the conversation, return null
         
         Return your findings in this JSON format:
         {
@@ -42,31 +59,25 @@ class OrderUtilsMixin:
         """
         
         try:
-            response = await openai.responses.create(
+            response = await openai.responses.parse(
                 model="gpt-4o",
                 instructions=system_message,
                 input=recent_conversation,
                 max_output_tokens=256,
-                temperature=0.3
+                temperature=0.3,
+                text_format=OrderDetails
             )
             
-            result_text = response.output_text.strip()
+            # Access the parsed Pydantic model directly
+            parsed_response = response.output_parsed
             
-            # Try to parse the JSON response
-            try:
-                result = json.loads(result_text)
-                # Normalize the results
-                order_details = {
-                    "order_number": result.get("order_number") if result.get("order_number") and result.get("order_number") != "null" else None,
-                    "email": result.get("email") if result.get("email") and result.get("email") != "null" else None
-                }
-                return order_details
-            except json.JSONDecodeError: # TODO: Fallback to regex extraction
-                print(f"Error parsing JSON response: {result_text}")
-                return {
-                    "order_number": None,
-                    "email": None
-                }
+            # Create the order details dictionary from the Pydantic model
+            order_details = {
+                "order_number": parsed_response.order_number,
+                "email": parsed_response.email
+            }
+            
+            return order_details
             
         except Exception as e:
             print(f"Error extracting order details: {e}")

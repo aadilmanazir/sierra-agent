@@ -93,7 +93,7 @@ class AgentUtilsMixin:
             print(f"Error detecting intent: {e}")
             return "none"
 
-    def _get_recent_conversation(self, num_messages: int = 10) -> str:
+    def _get_recent_conversation(self, num_messages: int = 25) -> str:
         """
         Get recent conversation history as formatted text, limited to the specified number of messages.
         
