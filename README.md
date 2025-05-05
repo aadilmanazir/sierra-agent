@@ -66,15 +66,7 @@ You can ask about:
 
 Type `exit`, `quit`, or `bye` to end the conversation.
 
-### Running Evaluations
-
-Run the evaluation framework to test the agent's performance:
-
-```bash
-poetry run python main.py evaluate
-```
-
-This will run a series of test cases and generate a report in `evaluation_results.json`.
+### TODO: Running Evaluations
 
 ## Project Structure
 
