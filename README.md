@@ -93,8 +93,8 @@ sierra-agent/
 ├── data/                    # Data files
 │   ├── ProductCatalog.json  # Product catalog data
 │   └── CustomerOrders.json  # Customer order data
-├── evals/                   # Evaluation utilities
-│   └── test_cases.py        # Test case definitions
+├── evals/                   # TODO
+│   └── test_cases.py        # TODO
 ├── main.py                  # CLI entry point
 ├── pyproject.toml           # Poetry configuration
 └── README.md                # Project documentation
