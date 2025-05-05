@@ -1,13 +1,7 @@
-import os
-import json
-from typing import List, Dict, Any, Optional, Tuple, Union
-import asyncio
-import re
-import dotenv
+from typing import Any
 from enum import Enum, auto
 
-from agent.services.products import get_all_products
-from agent.services.orders import search_orders, get_order_details, track_order, format_order_info, order_status_to_readable, orders_to_context
+from agent.services.orders import get_order_details, format_order_info, order_status_to_readable
 from agent.utils.agent_utils import handle_early_risers_promotion, handle_other_promotion_requests, AgentUtilsMixin
 from agent.utils.product_utils import ProductUtilsMixin
 from agent.utils.order_utils import OrderUtilsMixin
